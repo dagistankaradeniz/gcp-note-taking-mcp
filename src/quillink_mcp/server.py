@@ -104,7 +104,7 @@ def get_folder(folder_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def list_tags() -> dict[str, Any]:
+def list_tags() -> list[str]:
     """List every tag used across the caller's active notes."""
     return _get_client().get("/tags")
 

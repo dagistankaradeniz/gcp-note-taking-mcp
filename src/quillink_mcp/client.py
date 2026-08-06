@@ -30,7 +30,15 @@ class QuillinkClient:
                 "Quillink API rejected the credential (expired or revoked). "
                 "Run `quillink-mcp login` again, or check QUILLINK_TOKEN."
             )
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            # Surface the API's own RFC 7807 `detail` (e.g. "Note not
+            # found") instead of a generic httpx status-line message --
+            # far more useful for an agent deciding what to do next.
+            try:
+                detail = resp.json().get("detail")
+            except ValueError:
+                detail = None
+            raise RuntimeError(detail or f"{resp.status_code} {resp.reason_phrase}")
         return resp.json()
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
