@@ -10,6 +10,9 @@ dependencies = [
     "keyring>=25.0",
 ]
 
+[project.optional-dependencies]
+dev = ["ruff>=0.6", "mypy>=1.11"]
+
 [project.scripts]
 quillink-mcp = "quillink_mcp.__main__:main"
 
