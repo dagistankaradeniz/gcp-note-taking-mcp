@@ -4,11 +4,21 @@ An [MCP](https://modelcontextprotocol.io) server exposing **read-only** access t
 
 Requires a **Pro** Quillink plan (API Access is a Pro-only feature).
 
-## Install
+Not published to PyPI -- build and run it locally from source.
+
+## Build
 
 ```bash
-pip install quillink-mcp
+git clone https://github.com/dagistankaradeniz/gcp-note-taking-mcp.git
+cd gcp-note-taking-mcp
+python3 -m venv .venv
+.venv/bin/pip install -e .
 ```
+
+This installs the `quillink-mcp` command into `.venv/bin/`. Note the full
+path to that binary (e.g. `/Users/you/gcp-note-taking-mcp/.venv/bin/quillink-mcp`)
+-- MCP clients launch it directly, not through an activated shell, so
+they need the absolute path.
 
 ## Authenticate
 
@@ -17,7 +27,7 @@ Two options:
 **Option A — OAuth device login (recommended for interactive use):**
 
 ```bash
-quillink-mcp login
+.venv/bin/quillink-mcp login
 ```
 
 Opens a device code + verification URL; approve it in your browser. The token is stored in your OS keyring (or `~/.config/quillink-mcp/credential` as a fallback).
@@ -40,7 +50,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 {
   "mcpServers": {
     "quillink": {
-      "command": "quillink-mcp"
+      "command": "/absolute/path/to/gcp-note-taking-mcp/.venv/bin/quillink-mcp"
     }
   }
 }
@@ -52,7 +62,7 @@ If using a PAT instead of `login`, pass it as an env var in the config:
 {
   "mcpServers": {
     "quillink": {
-      "command": "quillink-mcp",
+      "command": "/absolute/path/to/gcp-note-taking-mcp/.venv/bin/quillink-mcp",
       "env": { "QUILLINK_TOKEN": "qlk_pat_..." }
     }
   }
@@ -63,7 +73,7 @@ Restart Claude Desktop after editing the config.
 
 ## Use with other MCP clients
 
-Any client that can launch a local stdio MCP server works the same way: point it at the `quillink-mcp` command (with `QUILLINK_TOKEN` set, or after running `quillink-mcp login` once so the credential is already stored). This includes Claude Code (`claude mcp add quillink -- quillink-mcp`) and any OpenAI-compatible agent runtime that supports the MCP stdio transport.
+Any client that can launch a local stdio MCP server works the same way: point it at the absolute path to `.venv/bin/quillink-mcp` (with `QUILLINK_TOKEN` set, or after running `quillink-mcp login` once so the credential is already stored). This includes Claude Code (`claude mcp add quillink -- /absolute/path/to/.venv/bin/quillink-mcp`) and any OpenAI-compatible agent runtime that supports the MCP stdio transport.
 
 ## Tools
 
@@ -91,10 +101,9 @@ Vault notes are never accessible here — they're end-to-end encrypted client-si
 | `QUILLINK_API_BASE` | Override the API base URL (default: production) |
 | `QUILLINK_CLIENT_ID` | Override the OAuth client id used by `login` |
 
-## Local development
+## Running it directly (for testing)
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e .
 .venv/bin/quillink-mcp login
-.venv/bin/quillink-mcp   # runs the server on stdio
+.venv/bin/quillink-mcp   # runs the server on stdio -- an MCP client normally launches this for you
 ```
