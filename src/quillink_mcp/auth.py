@@ -27,9 +27,10 @@ KEYRING_USER = "default"
 DEFAULT_CLIENT_ID = "REPLACE_WITH_REGISTERED_CLIENT_ID"
 DEFAULT_API_BASE = "https://note-taking-app-prod.web.app"
 
-# Read-only: no notes:write/folders:write/tags:write, matching this
-# server's tool set (see tools/*.py -- no create/update/trash tools).
-SCOPES = ["notes:read", "folders:read", "tags:read"]
+# Read-only: no notes:write/folders:write/tags:write/organizations:write,
+# matching this server's tool set (see server.py -- no create/update/
+# trash/invite/role-change tools).
+SCOPES = ["notes:read", "folders:read", "tags:read", "organizations:read"]
 
 
 def api_base() -> str:

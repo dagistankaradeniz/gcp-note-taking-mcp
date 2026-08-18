@@ -90,8 +90,10 @@ All read-only — this server cannot create, edit, or delete anything.
 | `list_folders` | List notebooks/folders |
 | `get_folder` | Get a single folder by id |
 | `list_tags` | List all tags in use |
+| `get_organization` | Your Team-plan organization's name, plan tier, seats, alerts |
+| `list_organization_members` | Your organization's members (plain members see only their own entry) |
 
-Vault notes are never accessible here — they're end-to-end encrypted client-side, so no server (including this one) can read them.
+Vault notes are never accessible here — they're end-to-end encrypted client-side, so no server (including this one) can read them. Organization tools 404 for a caller who isn't on a Team-plan organization.
 
 ## Configuration (environment variables)
 

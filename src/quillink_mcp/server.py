@@ -1,8 +1,9 @@
-"""The Quillink MCP server: read-only tools over notes, folders, tags, and
-search. Deliberately no write tools in this first release (create/update/
-trash notes or folders) -- keeps an AI agent from being able to modify or
-delete a user's notes; see the Developer > MCP page for the plan to add a
-write-scoped opt-in server later.
+"""The Quillink MCP server: read-only tools over notes, folders, tags,
+search, and (Team-plan) organizations. Deliberately no write tools in this
+first release (create/update/trash notes or folders; invite/remove
+members, role or seat changes) -- keeps an AI agent from being able to
+modify or delete a user's notes or organization; see the Developer > MCP
+page for the plan to add a write-scoped opt-in server later.
 
 Vault notes are never reachable here: the /v1 API itself excludes them
 (they're end-to-end encrypted client-side, so the server can't decrypt
@@ -107,6 +108,22 @@ def get_folder(folder_id: str) -> dict[str, Any]:
 def list_tags() -> list[str]:
     """List every tag used across the caller's active notes."""
     return _get_client().get("/tags")
+
+
+@mcp.tool()
+def get_organization() -> dict[str, Any]:
+    """Get the caller's Team-plan organization: name, plan tier, seat
+    allocations, member count, and any active alerts. 404s if the caller
+    doesn't belong to a Team-plan organization."""
+    return _get_client().get("/organizations/me")
+
+
+@mcp.tool()
+def list_organization_members() -> list[dict[str, Any]]:
+    """List the caller's organization's members. A plain member sees only
+    their own entry -- other members' emails/names/roles are admin/owner-
+    only information, scoped the same way the web app scopes it."""
+    return _get_client().get("/organizations/me/members")
 
 
 def run() -> None:
