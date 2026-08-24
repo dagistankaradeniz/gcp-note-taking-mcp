@@ -85,6 +85,9 @@ All read-only — this server cannot create, edit, or delete anything.
 | `get_note` | Get a single note by id |
 | `search_notes` | Full-text search over title + body |
 | `get_note_stats` | Note count, storage used, pinned count |
+| `get_note_backlinks` | Notes that link to a given note |
+| `get_note_graph` | Local link graph (1 or 2 hops) centered on a note |
+| `get_global_note_graph` | Whole-account link graph, paginated (Pro plan) |
 | `list_note_recipients` | Who a note has been shared with |
 | `list_shared_notes` | Notes shared with you by others |
 | `list_folders` | List notebooks/folders |

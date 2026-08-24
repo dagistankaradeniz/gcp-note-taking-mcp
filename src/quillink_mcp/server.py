@@ -80,6 +80,37 @@ def get_note_stats() -> dict[str, Any]:
 
 
 @mcp.tool()
+def get_note_backlinks(note_id: str) -> dict[str, Any]:
+    """List notes that link to note_id, each with an id/title/snippet.
+    Fails with 403 if note_id isn't owned by the caller, 404 if it doesn't
+    exist."""
+    return _get_client().get(f"/notes/{note_id}/backlinks")
+
+
+@mcp.tool()
+def get_note_graph(note_id: str, hops: int = 1) -> dict[str, Any]:
+    """Local link graph centered on note_id: nodes (id/title/locked) and
+    edges (source -> target) for its direct links and backlinks. hops=1 is
+    direct neighbors only; hops=2 also expands each neighbor's own
+    neighbors one level further."""
+    return _get_client().get(f"/notes/{note_id}/graph", {"hops": hops})
+
+
+@mcp.tool()
+def get_global_note_graph(
+    cursor: str | None = None, limit: int = 100
+) -> dict[str, Any]:
+    """Whole-account link graph, paginated: nodes and edges across every
+    note that has at least one link (in or out) or is locked. Pass the
+    response's next_cursor back in to fetch the next page; None means the
+    graph is exhausted. Requires a Pro plan, same gate as the web app's
+    Global Graph feature."""
+    return _get_client().get(
+        "/notes/graph/global", {"cursor": cursor, "limit": limit}
+    )
+
+
+@mcp.tool()
 def list_note_recipients(note_id: str) -> dict[str, Any]:
     """List who a note (owned by the caller) has been shared with."""
     return _get_client().get(f"/notes/{note_id}/recipients")
