@@ -43,7 +43,7 @@ jobs:
 
           async def main():
               tools = await mcp.list_tools()
-              assert len(tools) == 9, f'expected 9 tools, got {len(tools)}'
+              assert len(tools) == 14, f'expected 14 tools, got {len(tools)}'
               print(f'{len(tools)} tools registered OK')
 
           asyncio.run(main())

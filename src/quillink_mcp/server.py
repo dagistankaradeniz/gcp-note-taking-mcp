@@ -97,17 +97,13 @@ def get_note_graph(note_id: str, hops: int = 1) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_global_note_graph(
-    cursor: str | None = None, limit: int = 100
-) -> dict[str, Any]:
+def get_global_note_graph(cursor: str | None = None, limit: int = 100) -> dict[str, Any]:
     """Whole-account link graph, paginated: nodes and edges across every
     note that has at least one link (in or out) or is locked. Pass the
     response's next_cursor back in to fetch the next page; None means the
     graph is exhausted. Requires a Pro plan, same gate as the web app's
     Global Graph feature."""
-    return _get_client().get(
-        "/notes/graph/global", {"cursor": cursor, "limit": limit}
-    )
+    return _get_client().get("/notes/graph/global", {"cursor": cursor, "limit": limit})
 
 
 @mcp.tool()
