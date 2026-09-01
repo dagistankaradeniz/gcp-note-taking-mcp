@@ -105,6 +105,24 @@ Vault notes are never accessible here — they're end-to-end encrypted client-si
 | `QUILLINK_TOKEN` | A Personal Access Token — bypasses OAuth login entirely |
 | `QUILLINK_API_BASE` | Override the API base URL (default: production) |
 | `QUILLINK_CLIENT_ID` | Override the OAuth client id used by `login` |
+| `QUILLINK_WORKSPACE` | Use a named workspace's api-base/client-id/credential instead (see below) |
+
+## Workspaces (multiple environments/accounts)
+
+This server is a single long-running process, launched once per MCP client config entry — there's no per-call "switch workspace" the way the CLI has `--workspace`. To use several environments or accounts, register **one server entry per workspace**, each pinned to a different `QUILLINK_WORKSPACE`:
+
+```bash
+# One-time: define the workspaces with the CLI (gcp-note-taking-cli)
+quillink workspace add staging --api-base https://staging.example.com
+quillink workspace login staging
+
+# Point this server at it
+QUILLINK_WORKSPACE=staging .venv/bin/quillink-mcp login
+```
+
+Then in your MCP client config, add a second server entry (e.g. `quillink-staging`) alongside your existing one, with `"env": {"QUILLINK_WORKSPACE": "staging"}` — both can be active at once.
+
+Workspace metadata (api_base/client_id, no secrets) lives in `~/.config/quillink/workspaces.json` — the same file `gcp-note-taking-cli`'s `quillink workspace add/use` manages, so a workspace defined once via the CLI is immediately visible here. This server keeps its own separate keyring entry per workspace for the actual token, though, so you still need to `login` (or set `QUILLINK_TOKEN`) once per workspace here too. `QUILLINK_TOKEN`/`QUILLINK_API_BASE`/`QUILLINK_CLIENT_ID` set directly always take precedence over `QUILLINK_WORKSPACE`.
 
 ## Running it directly (for testing)
 

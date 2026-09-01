@@ -3,14 +3,31 @@ flow -- mirrors gcp-note-taking-cli's internal/auth package so the two
 tools behave identically, just in Python instead of Go. Kept in its own
 keyring service ("quillink-mcp", not "quillink-cli") since this server
 requests a narrower, read-only scope set than the CLI does.
+
+Workspaces: an MCP server process is long-running and started once per
+client config entry, so it resolves its workspace (if any) once, from
+QUILLINK_WORKSPACE, at startup/first use -- there's no per-call
+"--workspace" the way the CLI has one. To use multiple environments or
+accounts at once in an MCP client, register one server entry per
+workspace (e.g. "quillink-prod", "quillink-staging"), each with its own
+QUILLINK_WORKSPACE value.
+
+The workspace *registry* (name -> api_base/client_id, no secrets) is read
+from ~/.config/quillink/workspaces.json -- the exact same file
+gcp-note-taking-cli's `quillink workspace add/use` manages, so a
+workspace defined once via the CLI is immediately visible here too. Each
+tool still keeps its own separate keyring entry for the actual bearer
+token, since they're different OS processes/security boundaries.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import httpx
 import keyring
@@ -33,21 +50,70 @@ DEFAULT_API_BASE = "https://note-taking-app-prod.web.app"
 SCOPES = ["notes:read", "folders:read", "tags:read", "organizations:read"]
 
 
+def _workspace_registry_path() -> Path:
+    return Path.home() / ".config" / "quillink" / "workspaces.json"
+
+
+def _load_workspace_registry() -> dict[str, Any]:
+    path = _workspace_registry_path()
+    if not path.exists():
+        return {"current": "", "workspaces": {}}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {"current": "", "workspaces": {}}
+    data.setdefault("workspaces", {})
+    return data
+
+
+def workspace_name() -> str:
+    """QUILLINK_WORKSPACE env var only -- unlike the CLI, this server has
+    no interactive "workspace use" of its own (see module docstring), so
+    it never silently follows the CLI's persisted "current" workspace."""
+    return os.environ.get("QUILLINK_WORKSPACE", "")
+
+
+def _workspace() -> dict[str, Any] | None:
+    name = workspace_name()
+    if not name:
+        return None
+    return _load_workspace_registry()["workspaces"].get(name)
+
+
 def api_base() -> str:
-    return os.environ.get("QUILLINK_API_BASE", DEFAULT_API_BASE).rstrip("/")
+    env = os.environ.get("QUILLINK_API_BASE")
+    if env:
+        return env.rstrip("/")
+    ws = _workspace()
+    if ws and ws.get("api_base"):
+        return str(ws["api_base"]).rstrip("/")
+    return DEFAULT_API_BASE
 
 
 def client_id() -> str:
-    return os.environ.get("QUILLINK_CLIENT_ID", DEFAULT_CLIENT_ID)
+    env = os.environ.get("QUILLINK_CLIENT_ID")
+    if env:
+        return env
+    ws = _workspace()
+    if ws and ws.get("client_id"):
+        return str(ws["client_id"])
+    return DEFAULT_CLIENT_ID
+
+
+def _keyring_user() -> str:
+    return workspace_name() or KEYRING_USER
 
 
 def _credential_file() -> Path:
-    return Path.home() / ".config" / "quillink-mcp" / "credential"
+    name = workspace_name()
+    if not name:
+        return Path.home() / ".config" / "quillink-mcp" / "credential"
+    return Path.home() / ".config" / "quillink-mcp" / "credentials" / name
 
 
 def save_token(token: str) -> None:
     try:
-        keyring.set_password(KEYRING_SERVICE, KEYRING_USER, token)
+        keyring.set_password(KEYRING_SERVICE, _keyring_user(), token)
         return
     except KeyringError:
         pass
@@ -59,12 +125,13 @@ def save_token(token: str) -> None:
 
 def load_token() -> str | None:
     """Resolution order: QUILLINK_TOKEN env var (a PAT, for quick/CI use)
-    -> OS keyring -> credential file -> None (caller should run login())."""
+    -> OS keyring (scoped to QUILLINK_WORKSPACE, if set) -> credential
+    file -> None (caller should run login())."""
     env_token = os.environ.get("QUILLINK_TOKEN")
     if env_token:
         return env_token
     try:
-        token = keyring.get_password(KEYRING_SERVICE, KEYRING_USER)
+        token = keyring.get_password(KEYRING_SERVICE, _keyring_user())
         if token:
             return token
     except KeyringError:
@@ -77,7 +144,7 @@ def load_token() -> str | None:
 
 def delete_token() -> None:
     try:
-        keyring.delete_password(KEYRING_SERVICE, KEYRING_USER)
+        keyring.delete_password(KEYRING_SERVICE, _keyring_user())
     except KeyringError:
         pass
     path = _credential_file()
