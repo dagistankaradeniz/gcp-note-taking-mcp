@@ -20,6 +20,19 @@ path to that binary (e.g. `/Users/you/gcp-note-taking-mcp/.venv/bin/quillink-mcp
 -- MCP clients launch it directly, not through an activated shell, so
 they need the absolute path.
 
+**macOS:** if you clone the repo under `~/Documents`, `~/Desktop`, or
+`~/Downloads`, Claude Desktop may fail to launch the server with
+"Server disconnected" -- macOS privacy protection (TCC) blocks its child
+processes from reading those folders. Either grant Claude Desktop access
+to the folder (System Settings -> Privacy & Security -> Files and
+Folders), or build the venv outside the protected folders:
+
+```bash
+python3 -m venv ~/.local/share/quillink-mcp-venv
+~/.local/share/quillink-mcp-venv/bin/pip install /path/to/gcp-note-taking-mcp
+# then point your MCP client at ~/.local/share/quillink-mcp-venv/bin/quillink-mcp
+```
+
 ## Authenticate
 
 Two options:
@@ -32,9 +45,11 @@ Two options:
 
 Opens a device code + verification URL; approve it in your browser. The token is stored in your OS keyring (or `~/.config/quillink-mcp/credential` as a fallback).
 
+Requires a registered OAuth client id for this tool -- if `login` fails with an "Unknown client_id" error, set `QUILLINK_CLIENT_ID` to a registered client id (see Configuration below), or use a PAT instead.
+
 **Option B — Personal Access Token:**
 
-Create one in Quillink under **Settings → Developer → Tokens** (scopes: `notes:read`, `folders:read`, `tags:read`), then set it as an environment variable:
+Create one in Quillink under **Settings → Developer → Tokens** (scopes: `notes:read`, `folders:read`, `tags:read`, `organizations:read`), then set it as an environment variable:
 
 ```bash
 export QUILLINK_TOKEN=qlk_pat_...
