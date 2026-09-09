@@ -48,3 +48,22 @@ jobs:
 
           asyncio.run(main())
           "
+
+  license-check:
+    name: Dependency License Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -e . pip-licenses
+
+      # AGPL/SSPL/GPL cannot legally be shipped in this SaaS's clients
+      # (see AGENTS.md, "Open Source License & Dependency Compliance") --
+      # fail the build if one shows up.
+      - name: Fail on disallowed licenses
+        run: |
+          pip-licenses --fail-on="GNU Affero General Public License v3;GNU Affero General Public License v3 or later (AGPLv3+);Server Side Public License;GNU General Public License v2;GNU General Public License v2 or later (GPLv2+);GNU General Public License v3;GNU General Public License v3 or later (GPLv3+)"
