@@ -16,7 +16,9 @@ class QuillinkClient:
         self._base = auth.api_base()
         self._token = auth.require_token()
 
-    def _request(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
+    def _do_request(
+        self, method: str, path: str, params: dict[str, Any] | None = None
+    ) -> httpx.Response:
         params = {k: v for k, v in (params or {}).items() if v is not None}
         with httpx.Client(base_url=self._base, timeout=30.0) as client:
             resp = client.request(
@@ -39,7 +41,16 @@ class QuillinkClient:
             except ValueError:
                 detail = None
             raise RuntimeError(detail or f"{resp.status_code} {resp.reason_phrase}")
-        return resp.json()
+        return resp
+
+    def _request(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._do_request(method, path, params).json()
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         return self._request("GET", path, params)
+
+    def get_text(self, path: str, params: dict[str, Any] | None = None) -> str:
+        """Like get(), but for an endpoint that returns plain text/markdown
+        or NDJSON rather than a single JSON document (see the export_*
+        tools) -- .json() would fail to parse those."""
+        return self._do_request("GET", path, params).text

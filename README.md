@@ -101,8 +101,14 @@ All read-only — this server cannot create, edit, or delete anything.
 | `search_notes` | Full-text search over title + body |
 | `get_note_stats` | Note count, storage used, pinned count |
 | `get_note_backlinks` | Notes that link to a given note |
+| `get_related_notes` | Tag/link-similarity "you might want to link these" suggestions for a note (Pro plan) |
 | `get_note_graph` | Local link graph (1 or 2 hops) centered on a note |
 | `get_global_note_graph` | Whole-account link graph, paginated (Pro plan) |
+| `get_graph_analysis` | Community detection + centrality ranking over the whole-account graph (Pro plan) |
+| `export_note` | A single note as a standalone Markdown file |
+| `export_notes` | Bulk export of active notes as NDJSON or concatenated Markdown, for backups/scripting |
+| `list_attachments` | List a note's file attachments |
+| `get_attachment_download_url` | A short-lived signed URL to download one attachment's file bytes |
 | `list_note_recipients` | Who a note has been shared with |
 | `list_shared_notes` | Notes shared with you by others |
 | `list_folders` | List notebooks/folders |
