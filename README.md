@@ -119,6 +119,13 @@ All read-only — this server cannot create, edit, or delete anything.
 
 Vault notes are never accessible here — they're end-to-end encrypted client-side, so no server (including this one) can read them. Organization tools 404 for a caller who isn't on a Team-plan organization.
 
+## Security notes
+
+- **Read-only.** The server only requests read scopes and has no tools that create, change or delete anything.
+- **Note content is untrusted input.** A note -- especially one shared with you or imported -- can contain text written to steer an AI assistant ("prompt injection"), e.g. asking it to send your notes somewhere through another tool. The server tells clients to treat note content as data, not instructions, but that's a request to the model, not a guarantee. Keep tool approval on in your MCP client when other tools (email, web, file write) are enabled alongside this one.
+- **HTTPS only.** `QUILLINK_API_BASE` must be `https://` (plain `http://` is allowed for `localhost` only).
+- **Token storage.** The OS keychain, or a `0600` file under `~/.config/quillink-mcp/` when no keychain is available.
+
 ## Configuration (environment variables)
 
 | Variable | Purpose |

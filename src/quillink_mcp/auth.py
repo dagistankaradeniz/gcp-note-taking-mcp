@@ -28,6 +28,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 import keyring
@@ -80,13 +81,28 @@ def _workspace() -> dict[str, Any] | None:
     return _load_workspace_registry()["workspaces"].get(name)
 
 
+def _require_https(base: str) -> str:
+    """Plain HTTP only to this machine (local backend): anywhere else the
+    bearer token -- or, during login, the newly issued one -- would cross
+    the network in clear text."""
+    parsed = urlparse(base)
+    if parsed.scheme == "https":
+        return base
+    if parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1", "::1"):
+        return base
+    raise RuntimeError(
+        f"Refusing to use API base {base!r}: it must use https "
+        "(http is only allowed for localhost)."
+    )
+
+
 def api_base() -> str:
     env = os.environ.get("QUILLINK_API_BASE")
     if env:
-        return env.rstrip("/")
+        return _require_https(env.rstrip("/"))
     ws = _workspace()
     if ws and ws.get("api_base"):
-        return str(ws["api_base"]).rstrip("/")
+        return _require_https(str(ws["api_base"]).rstrip("/"))
     return DEFAULT_API_BASE
 
 
@@ -118,9 +134,14 @@ def save_token(token: str) -> None:
     except KeyringError:
         pass
     path = _credential_file()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(token)
-    path.chmod(0o600)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    # Created 0600 from the start -- never readable by others, not even
+    # briefly (an existing file is tightened before it's rewritten).
+    if path.exists():
+        path.chmod(0o600)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(token)
 
 
 def load_token() -> str | None:
