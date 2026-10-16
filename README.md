@@ -96,9 +96,9 @@ All read-only — this server cannot create, edit, or delete anything.
 
 | Tool | Description |
 |---|---|
-| `list_notes` | List notes, filterable by folder, status, tags, pinned |
+| `list_notes` | List notes, filterable by folder, status, tags (any, or all with `tag_match`), pinned |
 | `get_note` | Get a single note by id |
-| `search_notes` | Full-text search over title + body |
+| `search_notes` | Full-text search over title + body, optionally within tags |
 | `get_note_stats` | Note count, storage used, pinned count |
 | `get_note_backlinks` | Notes that link to a given note |
 | `get_related_notes` | Tag/link-similarity "you might want to link these" suggestions for a note (Pro plan) |
@@ -114,6 +114,7 @@ All read-only — this server cannot create, edit, or delete anything.
 | `list_folders` | List notebooks/folders |
 | `get_folder` | Get a single folder by id |
 | `list_tags` | List all tags in use |
+| `list_tag_counts` | Every tag with how many notes and canvases carry it |
 | `get_organization` | Your Team-plan organization's name, plan tier, seats, alerts |
 | `list_organization_members` | Your organization's members (plain members see only their own entry) |
 

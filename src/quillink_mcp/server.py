@@ -50,19 +50,23 @@ def list_notes(
     folder_id: str | None = None,
     status: str = "active",
     tags: list[str] | None = None,
+    tag_match: str = "any",
     pinned: bool | None = None,
     limit: int = 50,
     start_after: str | None = None,
 ) -> dict[str, Any]:
     """List the caller's notes. folder_id="" lists notes with no folder;
     omit it to list across all folders. status is "active" or "trashed".
-    Locked notes are included but their body is withheld (null)."""
+    tags filters to notes with any of them, or every one of them with
+    tag_match="all". Locked notes are included but their body is withheld
+    (null)."""
     return _get_client().get(
         "/notes",
         {
             "folder_id": folder_id,
             "status": status,
             "tags": tags,
+            "tag_match": tag_match if tags else None,
             "pinned": pinned,
             "limit": limit,
             "start_after": start_after,
@@ -78,11 +82,20 @@ def get_note(note_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def search_notes(q: str, limit: int = 50) -> dict[str, Any]:
+def search_notes(
+    q: str,
+    limit: int = 50,
+    tags: list[str] | None = None,
+    tag_match: str = "any",
+) -> dict[str, Any]:
     """Full-text search over the caller's active notes' titles and body
-    text. Locked notes only match on title (their body is never
-    substring-matched, so a search hit can't leak hidden content)."""
-    return _get_client().get("/notes/search", {"q": q, "limit": limit})
+    text, optionally only within notes carrying any of `tags` (every one
+    with tag_match="all"). Locked notes only match on title (their body is
+    never substring-matched, so a search hit can't leak hidden content)."""
+    return _get_client().get(
+        "/notes/search",
+        {"q": q, "limit": limit, "tags": tags, "tag_match": tag_match if tags else None},
+    )
 
 
 @mcp.tool()
@@ -160,6 +173,7 @@ def export_notes(
     format: str = "ndjson",
     folder_id: str | None = None,
     tags: list[str] | None = None,
+    tag_match: str = "any",
     limit: int = 5000,
 ) -> str:
     """Bulk export of the caller's active notes -- for backups/scripting,
@@ -170,7 +184,13 @@ def export_notes(
     list_notes."""
     return _get_client().get_text(
         "/notes/export",
-        {"format": format, "folder_id": folder_id, "tags": tags, "limit": limit},
+        {
+            "format": format,
+            "folder_id": folder_id,
+            "tags": tags,
+            "tag_match": tag_match if tags else None,
+            "limit": limit,
+        },
     )
 
 
@@ -219,6 +239,13 @@ def get_folder(folder_id: str) -> dict[str, Any]:
 def list_tags() -> list[str]:
     """List every tag used across the caller's active notes."""
     return _get_client().get("/tags")
+
+
+@mcp.tool()
+def list_tag_counts() -> list[dict[str, Any]]:
+    """Every tag with how many active notes and canvases carry it, most-used
+    first."""
+    return _get_client().get("/tags/counts")
 
 
 @mcp.tool()
