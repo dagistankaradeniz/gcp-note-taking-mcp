@@ -321,7 +321,7 @@ def get_canvas(canvas_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_folders(include_trashed: bool = False) -> dict[str, Any]:
-    """List the caller's notebooks/folders."""
+    """List the caller's folders."""
     return _content_client().get("/folders", {"include_trashed": include_trashed})
 
 

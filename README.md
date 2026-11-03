@@ -115,7 +115,7 @@ All read-only — this server cannot create, edit, or delete anything.
 | `get_task` | Get a single task by id |
 | `list_canvases` | List canvases (without their elements), filterable like notes |
 | `get_canvas` | Get a single canvas with its elements as JSON |
-| `list_folders` | List notebooks/folders |
+| `list_folders` | List folders |
 | `get_folder` | Get a single folder by id |
 | `list_tags` | List all tags in use |
 | `list_tag_counts` | Every tag with how many notes and canvases carry it |
