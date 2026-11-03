@@ -26,6 +26,7 @@ import json
 import os
 import sys
 import time
+import webbrowser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -180,10 +181,29 @@ def delete_token() -> None:
         path.unlink()
 
 
-def device_login() -> str:
+def _browser_available() -> bool:
+    """Not over SSH (the page would open on the remote machine, if
+    anywhere); webbrowser itself handles a missing desktop session."""
+    return not (os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_TTY"))
+
+
+def _open_sign_in_page(url: str) -> bool:
+    """Opens the server-sent sign-in link, http(s) only: anything else
+    (a file path, a custom scheme) must never reach the OS opener."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc:
+        return False
+    try:
+        return webbrowser.open(url)
+    except webbrowser.Error:
+        return False
+
+
+def device_login(open_browser: bool = False) -> str:
     """Runs RFC 8628 device authorization: request a code, print it for
     the user, poll until they approve it in a browser. Mirrors the CLI's
-    auth.Login exactly (same endpoints, same polling/backoff behavior)."""
+    auth.Login exactly (same endpoints, same polling/backoff behavior),
+    including opening the sign-in page when open_browser is set."""
     base = api_base()
     with httpx.Client(base_url=base, timeout=30.0) as client:
         code_resp = client.post(
@@ -197,7 +217,14 @@ def device_login() -> str:
             f"Go to {code['verification_uri']} and enter code: {code['user_code']}",
             file=sys.stderr,
         )
-        print(f"Or open {code['verification_uri_complete']} directly.", file=sys.stderr)
+        if (
+            open_browser
+            and _browser_available()
+            and _open_sign_in_page(code["verification_uri_complete"])
+        ):
+            print("Opened your browser. Check the code there matches this one.", file=sys.stderr)
+        else:
+            print(f"Or open {code['verification_uri_complete']} directly.", file=sys.stderr)
         print("Waiting for confirmation...", file=sys.stderr)
 
         interval = code.get("interval") or 5

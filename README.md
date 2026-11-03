@@ -43,7 +43,7 @@ Two options:
 .venv/bin/quillink-mcp login
 ```
 
-Opens a device code + verification URL; approve it in your browser. The token is stored in your OS keyring (or `~/.config/quillink-mcp/credential` as a fallback).
+Opens the sign-in page in your browser with the code filled in; approve it there. Over SSH, or with `--no-browser` / `QUILLINK_NO_BROWSER=1`, it only prints the link and code. The token is stored in your OS keyring (or `~/.config/quillink-mcp/credential` as a fallback).
 
 Requires a registered OAuth client id for this tool -- if `login` fails with an "Unknown client_id" error, set `QUILLINK_CLIENT_ID` to a registered client id (see Configuration below), or use a PAT instead.
 
