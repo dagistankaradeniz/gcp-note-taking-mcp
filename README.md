@@ -1,6 +1,6 @@
 # quillink-mcp
 
-An [MCP](https://modelcontextprotocol.io) server exposing **read-only** access to your [Quillink](https://note-taking-app-prod.web.app) notes, folders, and tags to AI tools like Claude Desktop, Claude Code, and other MCP-compatible clients.
+An [MCP](https://modelcontextprotocol.io) server exposing **read-only** access to your [Quillink](https://note-taking-app-prod.web.app) notes, tasks, canvases, folders, and tags to AI tools like Claude Desktop, Claude Code, and other MCP-compatible clients.
 
 Requires a **Pro** Quillink plan (API Access is a Pro-only feature).
 
@@ -49,7 +49,7 @@ Requires a registered OAuth client id for this tool -- if `login` fails with an 
 
 **Option B — Personal Access Token:**
 
-Create one in Quillink under **Settings → Developer → Tokens** (scopes: `notes:read`, `folders:read`, `tags:read`, `organizations:read`), then set it as an environment variable:
+Create one in Quillink under **Settings → Developer → Tokens** (scopes: `notes:read`, `tasks:read`, `canvases:read`, `folders:read`, `tags:read`, `organizations:read`), then set it as an environment variable:
 
 ```bash
 export QUILLINK_TOKEN=qlk_pat_...
@@ -111,6 +111,10 @@ All read-only — this server cannot create, edit, or delete anything.
 | `get_attachment_download_url` | A short-lived signed URL to download one attachment's file bytes |
 | `list_note_recipients` | Who a note has been shared with |
 | `list_shared_notes` | Notes shared with you by others |
+| `list_tasks` | List tasks, by status, due-date window, or shared with you |
+| `get_task` | Get a single task by id |
+| `list_canvases` | List canvases (without their elements), filterable like notes |
+| `get_canvas` | Get a single canvas with its elements as JSON |
 | `list_folders` | List notebooks/folders |
 | `get_folder` | Get a single folder by id |
 | `list_tags` | List all tags in use |
@@ -118,7 +122,7 @@ All read-only — this server cannot create, edit, or delete anything.
 | `get_organization` | Your Team-plan organization's name, plan tier, seats, alerts |
 | `list_organization_members` | Your organization's members (plain members see only their own entry) |
 
-Vault notes are never accessible here — they're end-to-end encrypted client-side, so no server (including this one) can read them. Organization tools 404 for a caller who isn't on a Team-plan organization.
+Vault notes are never accessible here — they're end-to-end encrypted client-side, so no server (including this one) can read them. Zero-Knowledge accounts can't use this server: their content is encrypted on their own devices, so every content tool answers "not available for Zero-Knowledge accounts" (use the app or the `quillink` CLI). Organization tools 404 for a caller who isn't on a Team-plan organization.
 
 ## Security notes
 

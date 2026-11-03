@@ -48,7 +48,14 @@ DEFAULT_API_BASE = "https://note-taking-app-prod.web.app"
 # Read-only: no notes:write/folders:write/tags:write/organizations:write,
 # matching this server's tool set (see server.py -- no create/update/
 # trash/invite/role-change tools).
-SCOPES = ["notes:read", "folders:read", "tags:read", "organizations:read"]
+SCOPES = [
+    "notes:read",
+    "tasks:read",
+    "canvases:read",
+    "folders:read",
+    "tags:read",
+    "organizations:read",
+]
 
 
 def _workspace_registry_path() -> Path:

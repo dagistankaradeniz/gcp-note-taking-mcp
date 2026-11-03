@@ -1,5 +1,5 @@
-"""The Quillink MCP server: read-only tools over notes, folders, tags,
-attachments, search, and (Team-plan) organizations. Deliberately no write
+"""The Quillink MCP server: read-only tools over notes, tasks, canvases,
+folders, tags, attachments, search, and (Team-plan) organizations. Deliberately no write
 tools in this first release (create/update/trash notes or folders;
 upload/delete attachments; invite/remove members, role or seat changes) --
 keeps an AI agent from being able to modify or delete a user's notes or
@@ -8,7 +8,10 @@ write-scoped opt-in server later.
 
 Vault notes are never reachable here: the /v1 API itself excludes them
 (they're end-to-end encrypted client-side, so the server can't decrypt
-them even if it wanted to)."""
+them even if it wanted to). Zero-Knowledge accounts get a clear refusal
+from every content tool: their content is encrypted on the owner's devices
+and this server holds no key, so it would only ever see ciphertext.
+Handing an AI agent decrypt ability is deliberately out of scope."""
 
 from __future__ import annotations
 
@@ -45,6 +48,28 @@ def _get_client() -> QuillinkClient:
     return _client
 
 
+_ZK_UNAVAILABLE = (
+    "Not available for Zero-Knowledge accounts: their content is encrypted "
+    "on your own devices, and this server has no key to read it. Use the "
+    "Quillink app or the quillink CLI instead."
+)
+_zk_account: bool | None = None
+
+
+def _content_client() -> QuillinkClient:
+    """_get_client() for tools that return note/task/canvas/folder/tag
+    content. Refuses Zero-Knowledge accounts up front (the tier is checked
+    once per server process via /v1/zk/status, which needs no scope)."""
+    global _zk_account
+    client = _get_client()
+    if _zk_account is None:
+        status = client.get("/zk/status")
+        _zk_account = status.get("security_tier") == "zero_knowledge"
+    if _zk_account:
+        raise RuntimeError(_ZK_UNAVAILABLE)
+    return client
+
+
 @mcp.tool()
 def list_notes(
     folder_id: str | None = None,
@@ -60,7 +85,7 @@ def list_notes(
     tags filters to notes with any of them, or every one of them with
     tag_match="all". Locked notes are included but their body is withheld
     (null)."""
-    return _get_client().get(
+    return _content_client().get(
         "/notes",
         {
             "folder_id": folder_id,
@@ -78,7 +103,7 @@ def list_notes(
 def get_note(note_id: str) -> dict[str, Any]:
     """Get a single note by id. Fails with 403 if it isn't owned by the
     caller, 404 if it doesn't exist."""
-    return _get_client().get(f"/notes/{note_id}")
+    return _content_client().get(f"/notes/{note_id}")
 
 
 @mcp.tool()
@@ -92,7 +117,7 @@ def search_notes(
     text, optionally only within notes carrying any of `tags` (every one
     with tag_match="all"). Locked notes only match on title (their body is
     never substring-matched, so a search hit can't leak hidden content)."""
-    return _get_client().get(
+    return _content_client().get(
         "/notes/search",
         {"q": q, "limit": limit, "tags": tags, "tag_match": tag_match if tags else None},
     )
@@ -102,7 +127,7 @@ def search_notes(
 def get_note_stats() -> dict[str, Any]:
     """Aggregate stats: total active notes, total storage bytes used,
     pinned-note count, and a created-at histogram by day."""
-    return _get_client().get("/notes/stats")
+    return _content_client().get("/notes/stats")
 
 
 @mcp.tool()
@@ -110,7 +135,7 @@ def get_note_backlinks(note_id: str) -> dict[str, Any]:
     """List notes that link to note_id, each with an id/title/snippet.
     Fails with 403 if note_id isn't owned by the caller, 404 if it doesn't
     exist."""
-    return _get_client().get(f"/notes/{note_id}/backlinks")
+    return _content_client().get(f"/notes/{note_id}/backlinks")
 
 
 @mcp.tool()
@@ -120,7 +145,7 @@ def get_related_notes(note_id: str, limit: int = 5) -> dict[str, Any]:
     tags they share. Requires a Pro plan, same gate as note_graph/
     note_backlinks. Fails with 403 if note_id isn't owned by the caller,
     404 if it doesn't exist."""
-    return _get_client().get(f"/notes/{note_id}/related", {"limit": limit})
+    return _content_client().get(f"/notes/{note_id}/related", {"limit": limit})
 
 
 @mcp.tool()
@@ -129,7 +154,7 @@ def get_note_graph(note_id: str, hops: int = 1) -> dict[str, Any]:
     edges (source -> target) for its direct links and backlinks. hops=1 is
     direct neighbors only; hops=2 also expands each neighbor's own
     neighbors one level further."""
-    return _get_client().get(f"/notes/{note_id}/graph", {"hops": hops})
+    return _content_client().get(f"/notes/{note_id}/graph", {"hops": hops})
 
 
 @mcp.tool()
@@ -139,7 +164,7 @@ def get_global_note_graph(cursor: str | None = None, limit: int = 100) -> dict[s
     response's next_cursor back in to fetch the next page; None means the
     graph is exhausted. Requires a Pro plan, same gate as the web app's
     Global Graph feature."""
-    return _get_client().get("/notes/graph/global", {"cursor": cursor, "limit": limit})
+    return _content_client().get("/notes/graph/global", {"cursor": cursor, "limit": limit})
 
 
 @mcp.tool()
@@ -153,7 +178,7 @@ def get_graph_analysis(
     a Pro plan, same gate as get_global_note_graph. On a very large graph
     the response may note that a cheaper approximation was substituted for
     the exact algorithm requested."""
-    return _get_client().get(
+    return _content_client().get(
         "/notes/graph/global/analysis",
         {"community_algo": community_algo, "centrality_algo": centrality_algo},
     )
@@ -165,7 +190,7 @@ def export_note(note_id: str) -> str:
     H1, followed by the body). A locked note's body can't be exported
     without its password -- returns just the title with a note explaining
     why. Fails with 403/404 same as get_note."""
-    return _get_client().get_text(f"/notes/{note_id}/export")
+    return _content_client().get_text(f"/notes/{note_id}/export")
 
 
 @mcp.tool()
@@ -182,7 +207,7 @@ def export_notes(
     returns one "# Title" block per note, concatenated into a single
     document. Locked notes are included with their body withheld, same as
     list_notes."""
-    return _get_client().get_text(
+    return _content_client().get_text(
         "/notes/export",
         {
             "format": format,
@@ -198,7 +223,7 @@ def export_notes(
 def list_attachments(note_id: str) -> dict[str, Any]:
     """List a note's file attachments. Fails with 403 if note_id isn't
     owned by the caller, 404 if it doesn't exist."""
-    return _get_client().get(f"/notes/{note_id}/attachments")
+    return _content_client().get(f"/notes/{note_id}/attachments")
 
 
 @mcp.tool()
@@ -207,45 +232,116 @@ def get_attachment_download_url(note_id: str, attachment_id: str) -> dict[str, A
     directly (not through this tool) -- expires_in seconds from now. A ZK/
     Vault/lock-encrypted note's attachment is still opaque ciphertext at
     that URL; there's no decrypt path here, same as a locked note's body."""
-    return _get_client().get(f"/notes/{note_id}/attachments/{attachment_id}/download")
+    return _content_client().get(f"/notes/{note_id}/attachments/{attachment_id}/download")
 
 
 @mcp.tool()
 def list_note_recipients(note_id: str) -> dict[str, Any]:
     """List who a note (owned by the caller) has been shared with."""
-    return _get_client().get(f"/notes/{note_id}/recipients")
+    return _content_client().get(f"/notes/{note_id}/recipients")
 
 
 @mcp.tool()
 def list_shared_notes() -> dict[str, Any]:
     """List notes that have been shared with the caller by someone else
     (received copies), most recently shared first."""
-    return _get_client().get("/shared")
+    return _content_client().get("/shared")
+
+
+@mcp.tool()
+def list_tasks(
+    status: str = "active",
+    shared_with_me: bool = False,
+    range_start: str | None = None,
+    range_end: str | None = None,
+    sort: str = "due_at",
+    limit: int = 50,
+    start_after: str | None = None,
+) -> dict[str, Any]:
+    """List the caller's tasks. status is "active" or "trashed"
+    (completed tasks are active ones with completed=true). shared_with_me=True lists tasks others shared with the
+    caller instead. range_start/range_end (ISO 8601, together, at most 92
+    days apart) keep tasks due in that window. sort is "due_at" (default)
+    or "updated_at". When has_more is true, pass the last task's id as
+    start_after for the next page."""
+    return _content_client().get(
+        "/tasks",
+        {
+            "status": status,
+            "shared_with_me": shared_with_me or None,
+            "range_start": range_start,
+            "range_end": range_end,
+            "sort": sort,
+            "limit": limit,
+            "start_after": start_after,
+        },
+    )
+
+
+@mcp.tool()
+def get_task(task_id: str) -> dict[str, Any]:
+    """Get a single task by id. Fails with 403 if the caller can't see it,
+    404 if it doesn't exist."""
+    return _content_client().get(f"/tasks/{task_id}")
+
+
+@mcp.tool()
+def list_canvases(
+    folder_id: str | None = None,
+    status: str = "active",
+    tags: list[str] | None = None,
+    tag_match: str = "any",
+    limit: int = 50,
+    start_after: str | None = None,
+) -> dict[str, Any]:
+    """List the caller's canvases (whiteboards): titles, tags, folders and
+    timestamps -- elements are left out; use get_canvas for one canvas's
+    content. Filters work like list_notes."""
+    return _content_client().get(
+        "/canvases",
+        {
+            "folder_id": folder_id,
+            "status": status,
+            "tags": tags,
+            "tag_match": tag_match if tags else None,
+            "limit": limit,
+            "start_after": start_after,
+        },
+    )
+
+
+@mcp.tool()
+def get_canvas(canvas_id: str) -> dict[str, Any]:
+    """Get a single canvas by id, including its elements (shapes, text,
+    arrows, note/task cards) as JSON. A password-locked canvas's elements
+    stay encrypted (no decrypt path here, same as a locked note). Fails with 403 if it isn't the caller's, 404 if it doesn't
+    exist."""
+    return _content_client().get(f"/canvases/{canvas_id}")
 
 
 @mcp.tool()
 def list_folders(include_trashed: bool = False) -> dict[str, Any]:
     """List the caller's notebooks/folders."""
-    return _get_client().get("/folders", {"include_trashed": include_trashed})
+    return _content_client().get("/folders", {"include_trashed": include_trashed})
 
 
 @mcp.tool()
 def get_folder(folder_id: str) -> dict[str, Any]:
     """Get a single folder by id."""
-    return _get_client().get(f"/folders/{folder_id}")
+    return _content_client().get(f"/folders/{folder_id}")
 
 
 @mcp.tool()
 def list_tags() -> list[str]:
     """List every tag used across the caller's active notes."""
-    return _get_client().get("/tags")
+    return _content_client().get("/tags")
 
 
 @mcp.tool()
 def list_tag_counts() -> list[dict[str, Any]]:
     """Every tag with how many active notes and canvases carry it, most-used
     first."""
-    return _get_client().get("/tags/counts")
+    return _content_client().get("/tags/counts")
 
 
 @mcp.tool()
